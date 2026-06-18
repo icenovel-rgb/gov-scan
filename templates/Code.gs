@@ -81,12 +81,33 @@ function deleteRow_(sh, key) {
   return { ok:true, deleted: key };
 }
 
+function report_(p) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const db = ss.getSheetByName(SHEET_NAME);
+  if (!db) return { ok:false, error:'no DB sheet' };
+  const rows = readAll_(db);
+  const want = (p.statuses && p.statuses.length) ? p.statuses : ['작성중','보류'];
+  const sel = rows.filter(function (r) { return want.indexOf(r.status) !== -1; });
+  let t = ss.getSheets().filter(function (s) { return s.getSheetId() === 0; })[0] || ss.getSheets()[0];
+  if (t.getName() === SHEET_NAME) {
+    t = ss.getSheets().filter(function (s) { return s.getName() !== SHEET_NAME; })[0];
+    if (!t) return { ok:false, error:'DB 외 대상 탭 없음' };
+  }
+  if (p.targetName) t.setName(p.targetName);
+  t.clear();
+  const cols = p.cols || ['status','applyEnd','title','eligibility','eligibilityReason','field','org','detailUrl','key'];
+  const out = [cols].concat(sel.map(function (r) { return cols.map(function (c) { return r[c] != null ? r[c] : ''; }); }));
+  t.getRange(1, 1, out.length, cols.length).setValues(out);
+  return { ok:true, written: sel.length, sheet: t.getName(), statuses: want };
+}
+
 function handle_(params) {
   if (params.secret !== SECRET) return { ok:false, error:'unauthorized' };
   const sh = sheet_();
   switch (params.action) {
     case 'ping':      return { ok:true, sheet: sh.getName(), headers: HEADERS,
-                               rowCount: Math.max(0, sh.getLastRow() - 1), version: 2 };
+                               rowCount: Math.max(0, sh.getLastRow() - 1), version: 3 };
+    case 'report':    return report_(params);
     case 'read':      return { ok:true, rows: readAll_(sh) };
     case 'upsert':    return Object.assign({ ok:true }, upsert_(sh, params.rows || []));
     case 'setStatus': return Object.assign({ ok:true }, setCell_(sh, params.key, 'status', params.status));

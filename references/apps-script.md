@@ -16,8 +16,11 @@
    { "webappUrl": "https://script.google.com/macros/s/XXXX/exec", "webappSecret": "<위 SECRET와 동일>" }
    ```
 
-## 코드 변경 후 재배포
-스크립트를 수정하면 **배포 → 배포 관리 → 편집(연필) → 버전: 새 버전 → 배포**. URL은 유지된다.
+## 코드 변경 후 재배포 (⚠️ 함정)
+스크립트 수정 후 **저장(Cmd+S)만으로는 웹앱에 반영 안 된다** — 웹앱은 "배포된 버전"만 본다.
+반드시: **배포 → 배포 관리 → 편집(연필) → "버전" 드롭다운에서 `새 버전` 선택 → 배포**. URL은 유지된다.
+- `새 버전`을 안 고르면 기존 버전(옛 코드)이 그대로 나간다. 반영 확인은 `--ping`의 `version` 값으로.
+- 재배포 직후 몇 초간 옛/새 응답이 섞이거나 HTML 로그인페이지가 보일 수 있다(전파 지연) → 잠시 후 재시도.
 
 ## API 계약 (db_sync.mjs ↔ 웹앱)
 
@@ -31,6 +34,7 @@ POST JSON `{ secret, action, ... }`:
 | `setStatus` | `key, status` | 해당 행 status 갱신 |
 | `setField` | `key, field, value` | 임의 컬럼 1개 갱신(예: docPath) |
 | `delete` | `key` | 해당 행 삭제(self-test 정리용) |
+| `report` | `targetName?, statuses?[]` | DB에서 `statuses`(기본 작성중·보류)만 추려 gid=0 탭에 채우고(+이름변경) 뷰 생성. DB 탭은 미수정. `db_sync.mjs --report "<이름>" --statuses "작성중,보류"` |
 
 GET `?secret=...&action=read` 도 동일하게 read 지원(빠른 점검용).
 
@@ -138,17 +142,39 @@ function deleteRow_(sh, key) {
   return { ok:true, deleted: key };
 }
 
+function report_(p) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const db = ss.getSheetByName(SHEET_NAME);
+  if (!db) return { ok:false, error:'no DB sheet' };
+  const rows = readAll_(db);
+  const want = (p.statuses && p.statuses.length) ? p.statuses : ['작성중','보류'];
+  const sel = rows.filter(function (r) { return want.indexOf(r.status) !== -1; });
+  let t = ss.getSheets().filter(function (s) { return s.getSheetId() === 0; })[0] || ss.getSheets()[0];
+  if (t.getName() === SHEET_NAME) {
+    t = ss.getSheets().filter(function (s) { return s.getName() !== SHEET_NAME; })[0];
+    if (!t) return { ok:false, error:'DB 외 대상 탭 없음' };
+  }
+  if (p.targetName) t.setName(p.targetName);
+  t.clear();
+  const cols = p.cols || ['status','applyEnd','title','eligibility','eligibilityReason','field','org','detailUrl','key'];
+  const out = [cols].concat(sel.map(function (r) { return cols.map(function (c) { return r[c] != null ? r[c] : ''; }); }));
+  t.getRange(1, 1, out.length, cols.length).setValues(out);
+  return { ok:true, written: sel.length, sheet: t.getName(), statuses: want };
+}
+
 function handle_(params) {
   if (params.secret !== SECRET) return { ok:false, error:'unauthorized' };
   const sh = sheet_();
   switch (params.action) {
     case 'ping':      return { ok:true, sheet: sh.getName(), headers: HEADERS,
-                               rowCount: Math.max(0, sh.getLastRow() - 1), version: 2 };
+                               rowCount: Math.max(0, sh.getLastRow() - 1), version: 3 };
+    case 'report':    return report_(params);
     case 'read':      return { ok:true, rows: readAll_(sh) };
     case 'upsert':    return Object.assign({ ok:true }, upsert_(sh, params.rows || []));
     case 'setStatus': return Object.assign({ ok:true }, setCell_(sh, params.key, 'status', params.status));
     case 'setField':  return Object.assign({ ok:true }, setCell_(sh, params.key, params.field, params.value));
     case 'delete':    return deleteRow_(sh, params.key);
+    case 'report':    return report_(params);
     default:          return { ok:false, error:'unknown action' };
   }
 }

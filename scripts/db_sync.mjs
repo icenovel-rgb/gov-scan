@@ -75,6 +75,13 @@ try {
     if (!m) throw new Error('--update 형식: "<key>:<field>=<value>"');
     await call({ action: 'setField', key: m[1].trim(), field: m[2].trim(), value: m[3] });
     console.log(JSON.stringify({ ok: true, update: { key: m[1].trim(), field: m[2], value: m[3] } }));
+  } else if (has('report')) {
+    // 해당/검토 건만 별도 탭으로 뷰 생성(+이름변경). --report [탭이름] --statuses "작성중,보류"
+    const tn = arg('report', null);
+    const targetName = (typeof tn === 'string') ? tn : undefined;
+    const statuses = arg('statuses', null) ? String(arg('statuses')).split(',').map(s => s.trim()) : undefined;
+    const j = await call({ action: 'report', targetName, statuses });
+    console.log(JSON.stringify(j, null, 2));
   } else if (arg('in', null)) {
     const inPath = arg('in');
     if (!existsSync(inPath)) throw new Error('no input: ' + inPath);
