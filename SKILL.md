@@ -25,27 +25,43 @@ config.json ─┘                                │
 
 ---
 
-## 0단계 — 환경 점검 (최초 1회)
+## 0단계 — 온보딩 (최초 1회) · 안내 → 확인 → 테스트 → 진행
 
-작업폴더에 아래가 있는지 확인하고 없으면 **템플릿을 복사**한 뒤 사용자에게 채우게 한다.
+**이 단계는 게이트다.** 아래 ①~③을 순서대로 진행하고, 각 항목이 **검증으로 통과**되기 전에는
+다음 단계로 넘어가지 않는다. 빠진 게 있으면 사용자에게 *절차를 직접 안내*하고, 값을 받아 채운 뒤,
+*테스트로 확인*하고 나서 보고한다.
 
 ```bash
-node <SKILL>/scripts/setup.mjs    # 작업폴더에 자격요건.md, config.json 없으면 생성
+node <SKILL>/scripts/setup.mjs    # 작업폴더에 자격요건.md·config.json 생성 + 무엇이 비었는지 진단
 ```
+setup 출력의 `missingKeys`로 무엇이 필요한지 파악한 뒤, 빠진 것만 아래 절차로 채운다.
 
-- `자격요건.md` — 회사 프로파일(업종/지역/업력/매출/기업유형/인증/대표자/관심분야). 형식: `references/eligibility-format.md`.
-- `config.json` — API 키 2종 + Apps Script 웹앱 URL. 형식·발급법: `references/sources.md`, `references/apps-script.md`.
+### ① 자격요건.md
+비었거나 모호하면 1단계의 인터뷰 체크리스트로 **물어서 채운다**(주체별). 채운 내용을 사용자에게 보여 확인받는다.
 
-**키가 비어 있으면** → `references/sources.md`의 발급 절차를 사용자에게 안내하고, 발급된 값을 `config.json`에
-넣게 한다(또는 환경변수 `BIZINFO_KEY`·`DATA_GO_KR_KEY`·`GS_WEBAPP_URL`). 키 없이는 스캔 불가.
+### ② OpenAPI 키 (bizinfo / data.go.kr)
+빈 키만 안내한다. **발급 절차(`references/sources.md`)를 사용자에게 단계별로 제시** → 사용자가 발급한 값을
+`config.json`(또는 env `BIZINFO_KEY`·`DATA_GO_KR_KEY`)에 넣는다.
+- **검증**: `node <SKILL>/scripts/scan.mjs --config config.json --source <해당소스> --count 1 --probe`
+  → 실제 응답이 오면 그 소스 OK. (두 키는 독립 — 하나만 있어도 그 소스로 진행 가능)
 
-**Apps Script 웹앱이 없으면** → `references/apps-script.md`의 `Code.gs`를 스프레드시트에 배포하도록 안내(1회).
-배포 URL을 `config.json.webappUrl`에 넣는다. **URL을 넣은 직후 연결을 반드시 검증한다:**
+### ③ Google Sheet 연결 (Apps Script 웹앱)
+`webappUrl`/`webappSecret`가 비어 있으면 **사용자에게 배포 절차를 안내**한다(아래 그대로 제시):
+1. 시트 → 확장 프로그램 → Apps Script → 기존 코드 지우고 `<SKILL>/templates/Code.gs` 전체 붙여넣기
+2. 맨 위 `SECRET`을 임의 긴 문자열로 변경(기억)
+3. 배포 → 새 배포 → 웹 앱 / 실행: 나 / 액세스: 모든 사용자 → 배포 → 권한 승인
+4. 나온 **웹 앱 URL(.../exec)** 과 **SECRET**을 사용자에게 받는다.
+
+→ 받은 값을 `config.json`의 `webappUrl`·`webappSecret`에 기록하고 **반드시 연결을 테스트**한다:
 ```bash
-node <SKILL>/scripts/db_sync.mjs --config config.json --ping       # 연결·인증·헤더
+node <SKILL>/scripts/db_sync.mjs --config config.json --ping       # 도달·인증·헤더
 node <SKILL>/scripts/db_sync.mjs --config config.json --selftest   # 쓰기→읽기→삭제 round-trip(비파괴)
 ```
-→ `통과 ✅`가 떠야 4단계(DB 기록)로 간다. 실패하면 DB 기록을 시도하지 말고 원인부터 잡는다.
+- **`통과 ✅`가 떠야** DB 기록(4단계)을 한다. 실패하면 DB 기록을 시도하지 말고, 사용자에게 실패 원인
+  (URL/SECRET 오타·액세스 권한·재배포 필요)을 알리고 같이 잡는다.
+
+> 키나 웹앱이 아직 없어 **부분만 준비**되면(예: bizinfo만), 가능한 범위로 스캔·판정은 진행하되,
+> **DB 기록은 보류**하고 사용자에게 "③ 완료 후 기록 가능"을 명시한다. 추측으로 완료 선언 금지.
 
 ---
 
