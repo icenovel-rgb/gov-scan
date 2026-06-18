@@ -115,16 +115,29 @@ node <SKILL>/scripts/db_sync.mjs --config config.json --in scan.json
 - 멱등: 재실행해도 중복 없음. 이미 `결과대기/선정/탈락/완료`인 행의 status는 **덮어쓰지 않는다**.
 - 동기화 후 db_sync는 신규/갱신/스킵 건수를 출력 → 사용자에게 보고.
 
-## 5단계 — 문서 작성 (해당 건, 확인 후)
+## 5단계 — 자료 수집 + 문서 작성 (해당 건, 확인 후)
 
-DB 기록 뒤, `status=작성중`(자격 해당) 목록을 **사용자에게 보여주고** 어떤 건을 작성할지 고른다.
-선택된 각 건마다:
+DB 기록 뒤, `status=작성중`(자격 해당) 목록을 **사용자에게 보여주고** 어떤 건을 진행할지 고른다.
 
-1. 작업폴더에 `사업명-slug/` 폴더 생성, 공고 상세를 WebFetch로 수집.
-2. [`kdr`](../kdr/SKILL.md) 스킬을 호출 → `report.md` 설계(신청서/사업계획서 양식) → 이미지(필요시) → `build_report.mjs`로 HWPX 조립 → `verify_report.mjs` 검증.
-3. 산출물 경로(`.../output/report.hwpx`)를 해당 행의 `작성문서경로`에 기록(`db_sync.mjs --update` 사용).
+### 5-1. 공문·서식 수집 (사업별 폴더)
+선택 건의 **공고문·신청서식·가이드·FAQ**를 사업별 폴더로 내려받는다(bizinfo 첨부 제공).
+```bash
+node <SKILL>/scripts/collect.mjs --in judged.json --status 작성중 --out-dir 사업
+# 또는 --eligibility 해당. 폴더당: 공고문/첨부서식(hwp·pdf) + 공고.md(개요·대상·접수처·파일목록) + meta.json
+```
+- bizinfo는 `printFlpthNm`(공고문)·`flpthNm`(첨부, `@`구분)·`rceptEngnHmpgUrl`(접수처)을 준다 → 자동 수집.
+- 다운로드는 매직바이트 최소크기로 검증(실패는 `공고.md` 파일목록에 표시).
+- 접수가 외부 사이트(네이버폼/소상공인24 등)면 `공고.md`의 접수처 URL로 안내.
 
-> 자동 일괄 작성이 아니라 **건별 확인 후** 작성한다(토큰·시간 절약). "전부 작성"을 명시하면 일괄 진행.
+### 5-2. 신청서 작성 (kdr)
+각 사업 폴더에서:
+1. 수집된 **신청서식(hwp)·공고문**을 근거로 `report.md` 설계(공고가 요구하는 양식·항목에 맞춰).
+2. [`kdr`](../kdr/SKILL.md) 스킬 호출 → 이미지(필요시) → `build_report.mjs` 조립 → `verify_report.mjs` 검증.
+3. 산출물 경로(`사업/<제목>/output/report.hwpx`)를 해당 행 `docPath`에 기록:
+   `db_sync.mjs --update "<key>:docPath=<경로>"`.
+
+> 자동 일괄이 아니라 **건별 확인 후** 진행(토큰·시간 절약). "전부"를 명시하면 일괄.
+> 수집만(5-1) 먼저 하고 작성(5-2)은 나중에 해도 된다.
 
 ---
 
@@ -140,5 +153,6 @@ node <SKILL>/scripts/db_sync.mjs --config config.json --set "<출처>:<사업ID>
 - `references/sources.md` — bizinfo/K-Startup API 엔드포인트·파라미터·필드매핑·키 발급법
 - `references/db-schema.md` — Sheet 컬럼·상태 라이프사이클·멱등 규칙
 - `references/eligibility-format.md` — 자격요건.md 양식·판정 기준
+- `scripts/collect.mjs` — 해당 사업별 폴더에 공고문·서식 수집 + 공고.md 생성
 - `references/apps-script.md` — Sheet 읽기/쓰기용 Apps Script 웹앱 배포(Code.gs)
 - `templates/` — 자격요건.md · config.json · Code.gs 원본
