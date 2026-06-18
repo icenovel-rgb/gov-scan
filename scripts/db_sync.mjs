@@ -36,7 +36,33 @@ const COLS = ['key', 'source', 'id', 'title', 'org', 'field', 'applyStart', 'app
   'detailUrl', 'eligibility', 'eligibilityReason', 'status', 'docPath', 'note'];
 
 try {
-  if (has('read')) {
+  if (has('ping')) {
+    const j = await call({ action: 'ping' });
+    const headOk = Array.isArray(j.headers) && j.headers[0] === 'key' && j.headers.includes('status');
+    console.log(JSON.stringify({
+      ok: true, sheet: j.sheet, rowCount: j.rowCount, version: j.version,
+      headerValid: headOk,
+      verdict: headOk ? '연결 정상 ✅ (시트 도달·인증·헤더 OK)' : '⚠️ 연결됐으나 헤더 비정상 — Code.gs HEADERS 확인',
+    }, null, 2));
+    if (!headOk) process.exit(2);
+  } else if (has('selftest')) {
+    // 비파괴 round-trip: 센티넬 행 upsert → read 확인 → delete → 원상복구
+    const K = '__selftest__:0';
+    const sentinel = { key: K, source: '__selftest__', id: '0', title: 'gov-scan 연결테스트', eligibility: '해당없음' };
+    const up = await call({ action: 'upsert', rows: [sentinel] });
+    const rd = await call({ action: 'read' });
+    const found = rd.rows.find(r => r.key === K);
+    const del = await call({ action: 'delete', key: K });
+    const after = await call({ action: 'read' });
+    const cleaned = !after.rows.find(r => r.key === K);
+    const pass = !!found && cleaned;
+    console.log(JSON.stringify({
+      ok: pass,
+      steps: { upsert: up.inserted + up.updated > 0, readBack: !!found, deleted: del.ok === true, cleanedUp: cleaned },
+      verdict: pass ? '쓰기/읽기/삭제 round-trip 통과 ✅ — DB 신뢰 가능' : '❌ round-trip 실패 — apps-script.md 점검',
+    }, null, 2));
+    if (!pass) process.exit(2);
+  } else if (has('read')) {
     const j = await call({ action: 'read' });
     console.log(JSON.stringify({ ok: true, count: j.rows.length, rows: j.rows }, null, 2));
   } else if (arg('set', null)) {
@@ -67,7 +93,7 @@ try {
       inserted: j.inserted, updated: j.updated, skipped: j.skipped, byStatus: j.byStatus,
     }, null, 2));
   } else {
-    console.error('사용: --in <json> | --read | --set "key=status" | --update "key:field=value"');
+    console.error('사용: --ping | --selftest | --in <json> | --read | --set "key=status" | --update "key:field=value"');
     process.exit(1);
   }
 } catch (e) {

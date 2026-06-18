@@ -25,14 +25,28 @@ POST JSON `{ secret, action, ... }`:
 
 | action | payload | 동작 |
 |---|---|---|
+| `ping` | — | 연결/인증/헤더 점검. `{sheet, headers, rowCount, version}` 반환(쓰기 없음) |
 | `read` | — | 전체 행을 객체배열로 반환 |
 | `upsert` | `rows: [...]` | 키(`key`) 기준 upsert. 멱등규칙은 db-schema.md. 응답 `{inserted, updated, skipped, byStatus}` |
 | `setStatus` | `key, status` | 해당 행 status 갱신 |
 | `setField` | `key, field, value` | 임의 컬럼 1개 갱신(예: docPath) |
+| `delete` | `key` | 해당 행 삭제(self-test 정리용) |
 
 GET `?secret=...&action=read` 도 동일하게 read 지원(빠른 점검용).
 
 응답: `{ ok: true, ... }` 또는 `{ ok: false, error }`.
+
+## 배포 직후 검증 (필수)
+
+URL을 config.json 에 넣은 뒤 **반드시** 연결을 검증한다:
+
+```bash
+node <SKILL>/scripts/db_sync.mjs --config config.json --ping       # 연결·인증·헤더 OK?
+node <SKILL>/scripts/db_sync.mjs --config config.json --selftest   # 쓰기→읽기→삭제 round-trip
+```
+- `--ping`: 시트 도달·SECRET 일치·헤더 정상 확인(쓰기 없음).
+- `--selftest`: 센티넬 행을 넣고 되읽어 확인한 뒤 삭제까지 검증(비파괴). `통과 ✅` 떠야 DB를 신뢰.
+- 실패 시: URL/SECRET 오타, 배포 액세스 권한(모든 사용자), Code.gs 버전(재배포) 점검.
 
 ---
 
@@ -117,14 +131,24 @@ function setCell_(sh, key, field, value) {
   return { ok:true };
 }
 
+function deleteRow_(sh, key) {
+  const idx = indexByKey_(sh);
+  if (!idx[key]) return { ok:false, error:'key not found: ' + key };
+  sh.deleteRow(idx[key]);
+  return { ok:true, deleted: key };
+}
+
 function handle_(params) {
   if (params.secret !== SECRET) return { ok:false, error:'unauthorized' };
   const sh = sheet_();
   switch (params.action) {
+    case 'ping':      return { ok:true, sheet: sh.getName(), headers: HEADERS,
+                               rowCount: Math.max(0, sh.getLastRow() - 1), version: 2 };
     case 'read':      return { ok:true, rows: readAll_(sh) };
     case 'upsert':    return Object.assign({ ok:true }, upsert_(sh, params.rows || []));
     case 'setStatus': return Object.assign({ ok:true }, setCell_(sh, params.key, 'status', params.status));
     case 'setField':  return Object.assign({ ok:true }, setCell_(sh, params.key, params.field, params.value));
+    case 'delete':    return deleteRow_(sh, params.key);
     default:          return { ok:false, error:'unknown action' };
   }
 }

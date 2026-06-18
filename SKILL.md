@@ -40,7 +40,12 @@ node <SKILL>/scripts/setup.mjs    # 작업폴더에 자격요건.md, config.json
 넣게 한다(또는 환경변수 `BIZINFO_KEY`·`DATA_GO_KR_KEY`·`GS_WEBAPP_URL`). 키 없이는 스캔 불가.
 
 **Apps Script 웹앱이 없으면** → `references/apps-script.md`의 `Code.gs`를 스프레드시트에 배포하도록 안내(1회).
-배포 URL을 `config.json.webappUrl`에 넣는다.
+배포 URL을 `config.json.webappUrl`에 넣는다. **URL을 넣은 직후 연결을 반드시 검증한다:**
+```bash
+node <SKILL>/scripts/db_sync.mjs --config config.json --ping       # 연결·인증·헤더
+node <SKILL>/scripts/db_sync.mjs --config config.json --selftest   # 쓰기→읽기→삭제 round-trip(비파괴)
+```
+→ `통과 ✅`가 떠야 4단계(DB 기록)로 간다. 실패하면 DB 기록을 시도하지 말고 원인부터 잡는다.
 
 ---
 

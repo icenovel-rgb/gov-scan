@@ -74,14 +74,24 @@ function setCell_(sh, key, field, value) {
   return { ok:true };
 }
 
+function deleteRow_(sh, key) {
+  const idx = indexByKey_(sh);
+  if (!idx[key]) return { ok:false, error:'key not found: ' + key };
+  sh.deleteRow(idx[key]);
+  return { ok:true, deleted: key };
+}
+
 function handle_(params) {
   if (params.secret !== SECRET) return { ok:false, error:'unauthorized' };
   const sh = sheet_();
   switch (params.action) {
+    case 'ping':      return { ok:true, sheet: sh.getName(), headers: HEADERS,
+                               rowCount: Math.max(0, sh.getLastRow() - 1), version: 2 };
     case 'read':      return { ok:true, rows: readAll_(sh) };
     case 'upsert':    return Object.assign({ ok:true }, upsert_(sh, params.rows || []));
     case 'setStatus': return Object.assign({ ok:true }, setCell_(sh, params.key, 'status', params.status));
     case 'setField':  return Object.assign({ ok:true }, setCell_(sh, params.key, params.field, params.value));
+    case 'delete':    return deleteRow_(sh, params.key);
     default:          return { ok:false, error:'unknown action' };
   }
 }
