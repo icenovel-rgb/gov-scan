@@ -1,0 +1,9 @@
+{
+  "bizinfoKey": "",
+  "dataGoKrKey": "",
+  "webappUrl": "",
+  "webappSecret": "",
+  "sheetId": "",
+  "scanSinceDays": 30,
+  "openOnly": true
+}

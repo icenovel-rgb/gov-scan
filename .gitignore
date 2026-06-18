@@ -1,0 +1,11 @@
+# 사용자 비밀값/산출물 — 절대 커밋 금지 (루트 한정: templates/ 의 동명 파일은 보존)
+/config.json
+/config.local.json
+/scan.json
+/judged.json
+/자격요건.md
+*.hwpx
+/output/
+/images/
+node_modules/
+.DS_Store
