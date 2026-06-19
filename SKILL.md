@@ -91,6 +91,14 @@ node <SKILL>/scripts/scan.mjs --config config.json --out scan.json
 > **첫 실행 시**: `--probe`로 원본 응답 키를 확인하고 `references/sources.md`의 매핑표와 대조해
 > 필드명이 맞는지 1회 검증한다(포털 API 필드명이 개정될 수 있음).
 
+### 2-b. 크롤 소스 (API 없는 기관 직접 순회)
+
+`crawl-sources.json`의 기관 게시판을 **WebFetch로 순회**해 공고를 추출하고, API 결과(`scan.json`)에 **합친다**.
+- 각 `sources[]`의 `listUrl`/`homepage`를 열어 공고 목록(제목·상세링크·날짜) 추출 → 정규화(`source`=기관명, `key`=`<source>:<id>`).
+- 절차·첨부수집·JS사이트 한계·소스 추가법: `references/crawl-sources.md`.
+- 기본 시드(경남 중심): 경남문화예술진흥원(검증)·경남TP·창원산업진흥원·경남창조경제혁신센터·경남신용보증재단·경남도청·소상공인시장진흥공단.
+- 이후 판정·DB·collect는 API 건과 **동일하게** 처리(크롤 건도 전건 DB 기록).
+
 ## 3단계 — 자격 판정
 
 각 공고를 1단계의 **모든 주체**와 대조한다(OR 매칭 — 한 주체라도 충족하면 해당).
@@ -151,6 +159,7 @@ node <SKILL>/scripts/db_sync.mjs --config config.json --set "<출처>:<사업ID>
 
 ## 참고 문서
 - `references/sources.md` — bizinfo/K-Startup API 엔드포인트·파라미터·필드매핑·키 발급법
+- `references/crawl-sources.md` — API 없는 기관 게시판 직접 순회(크롤) 절차·대상목록·한계
 - `references/db-schema.md` — Sheet 컬럼·상태 라이프사이클·멱등 규칙
 - `references/eligibility-format.md` — 자격요건.md 양식·판정 기준
 - `scripts/collect.mjs` — 해당 사업별 폴더에 공고문·서식 수집 + 공고.md 생성

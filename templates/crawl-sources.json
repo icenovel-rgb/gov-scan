@@ -1,0 +1,58 @@
+{
+  "_설명": "API가 없는 기관 게시판을 직접 순회(크롤)하는 대상 목록. gov-scan이 각 항목을 WebFetch로 열어 공고를 추출→API 결과와 합쳐 판정·DB·수집한다. listUrl이 정확한 게시판이면 바로 긁고, homepage만 있으면 스킬이 공고 게시판을 찾아 들어간다. region/keyword로 1차 관련성 힌트를 준다.",
+  "sources": [
+    {
+      "name": "경남문화예술진흥원",
+      "listUrl": "https://www.gcaf.or.kr/bbs/board.php?bo_table=sub4_1",
+      "altUrls": ["https://www.gcaf.or.kr/bbs/board.php?bo_table=sub4_7"],
+      "type": "gnuboard",
+      "region": "경남",
+      "verified": true,
+      "note": "자유게시판(공모·모집)+예술진흥팀 지원사업. 정적 HTML, 잘 긁힘"
+    },
+    {
+      "name": "경남테크노파크",
+      "listUrl": "https://www.gntp.or.kr/biz/notice",
+      "homepage": "https://www.gntp.or.kr",
+      "region": "경남",
+      "verified": false,
+      "note": "사업공고 게시판 — 첫 크롤 시 실제 URL 확인 필요"
+    },
+    {
+      "name": "창원산업진흥원",
+      "homepage": "https://www.cwip.or.kr",
+      "region": "경남 창원",
+      "verified": false,
+      "note": "지원사업 공고 게시판 위치 확인 필요"
+    },
+    {
+      "name": "경남창조경제혁신센터",
+      "homepage": "https://ccei.creativekorea.or.kr/gyeongnam",
+      "region": "경남",
+      "verified": false,
+      "note": "창업·스타트업 공고. JS 렌더링일 수 있음(정적 추출 제한 가능)"
+    },
+    {
+      "name": "경남신용보증재단",
+      "homepage": "https://www.gnsinbo.or.kr",
+      "region": "경남",
+      "keyword": "자금,보증",
+      "verified": false,
+      "note": "관심사 '자금' 관련 — 보증·정책자금 공고"
+    },
+    {
+      "name": "경상남도청 고시·공고",
+      "homepage": "https://www.gyeongnam.go.kr",
+      "region": "경남",
+      "verified": false,
+      "note": "도 단위 고시공고. 분량 많음 — 키워드 필터 권장"
+    },
+    {
+      "name": "소상공인시장진흥공단",
+      "homepage": "https://www.semas.or.kr",
+      "keyword": "소상공인",
+      "verified": false,
+      "note": "주체1(소상공인) 직접 관련. 전국"
+    }
+  ]
+}

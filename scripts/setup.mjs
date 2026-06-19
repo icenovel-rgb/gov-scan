@@ -18,6 +18,7 @@ function ensure(name, srcRel) {
 const results = [
   ensure('자격요건.md', 'templates/자격요건.md'),
   ensure('config.json', 'templates/config.json'),
+  ensure('crawl-sources.json', 'templates/crawl-sources.json'),
 ];
 
 // config 점검
